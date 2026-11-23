@@ -1,0 +1,38 @@
+[package]
+name = "comparator-studio"
+version = "0.4.1"
+edition = "2021"
+authors = ["Comparator Studio contributors"]
+description = "A safe, cross-platform visual file comparison and migration tool"
+license = "MIT"
+
+[dependencies]
+eframe = { version = "0.29.1", default-features = true }
+rfd = "0.15.1"
+walkdir = "2.5.0"
+blake3 = "1.5.5"
+fs4 = { version = "0.13.1", features = ["sync"] }
+similar = "2.6.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3.14"
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[package.metadata.bundle]
+name = "Comparator Studio"
+identifier = "app.comparator.studio"
+icon = ["assets/comparator-512.png"]
+category = "Utility"
+short_description = "Compare, copy and safely mirror files between disks"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"

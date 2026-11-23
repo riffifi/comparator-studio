@@ -1,0 +1,70 @@
+name: Native builds
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux native GUI dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev \
+            libasound2-dev libgl1-mesa-dev libx11-dev libxi-dev \
+            libxcursor-dev libxrandr-dev pkg-config
+      - name: Test engine
+        run: cargo test --locked
+      - name: Compile release
+        if: runner.os != 'macOS'
+        run: cargo build --locked --release
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist/comparator-studio-linux
+          cp target/release/comparator-studio dist/comparator-studio-linux/
+          cp README.md LICENSE assets/Geist-OFL.txt assets/comparator-512.png dist/comparator-studio-linux/
+          tar -C dist -czf comparator-studio-linux-x64.tar.gz comparator-studio-linux
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/comparator-studio-windows | Out-Null
+          Copy-Item target/release/comparator-studio.exe dist/comparator-studio-windows/
+          Copy-Item README.md,LICENSE,assets/Geist-OFL.txt,assets/comparator-512.png dist/comparator-studio-windows/
+          Compress-Archive -Path dist/comparator-studio-windows -DestinationPath comparator-studio-windows-x64.zip
+      - name: Create macOS application bundle
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          ./scripts/bundle-macos.sh
+          ditto -c -k --keepParent 'dist/Comparator Studio.app' comparator-studio-macos.zip
+      - name: Upload Linux binary
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: comparator-studio-linux-x64.tar.gz
+      - name: Upload Windows binary
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: comparator-studio-windows-x64.zip
+      - name: Upload macOS bundle
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ runner.arch }}
+          path: comparator-studio-macos.zip
